@@ -17,6 +17,8 @@ export default function Controls({
   onSpeedChange,
   onToggleRain,
   showRain,
+  onToggleCitizenAI,
+  citizenAIEnabled,
 }) {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY || '';
   const [model, setModel] = useState(CONFIG.GROQ_MODEL_DEFAULT);
@@ -122,6 +124,12 @@ export default function Controls({
               onClick={onToggleRain}
             >
               🌧 Lluvia
+            </button>
+            <button
+              className={`btn btn-toggle ${citizenAIEnabled ? 'active' : ''}`}
+              onClick={() => onToggleCitizenAI && onToggleCitizenAI(!citizenAIEnabled)}
+            >
+              🤖 IA ciudadanos
             </button>
           </div>
         </div>

@@ -11,6 +11,7 @@ export default function App() {
   const [selectedCitizen, setSelectedCitizen] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [showRain, setShowRain] = useState(false);
+  const [citizenAIEnabled, setCitizenAIEnabled] = useState(false);
   const engineRef = useRef(null);
 
   const handleStateUpdate = useCallback((state) => {
@@ -33,6 +34,11 @@ export default function App() {
     try { window.simEngine = engineRef.current; } catch {}
     return () => { try { window.simEngine = undefined; } catch {} ; engineRef.current?.stop(); };
   }, [handleStateUpdate, handleGodResponse]);
+
+  const handleToggleCitizenAI = useCallback((enabled) => {
+    setCitizenAIEnabled(!!enabled);
+    try { engineRef.current?.setCitizenAIGlobal(!!enabled); } catch {}
+  }, []);
 
   const handleStart   = useCallback((k, m, s) => engineRef.current?.init(k, m, s), []);
   const handlePause   = useCallback(() => engineRef.current?.pause(), []);
@@ -73,6 +79,8 @@ export default function App() {
           onSpeedChange={handleSpeedChange}
           onToggleRain={() => setShowRain(r => !r)}
           showRain={showRain}
+          onToggleCitizenAI={handleToggleCitizenAI}
+          citizenAIEnabled={citizenAIEnabled}
         />
         <StatsPanel
           simState={simState}

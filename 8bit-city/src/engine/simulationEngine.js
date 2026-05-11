@@ -126,9 +126,12 @@ export class SimulationEngine {
     this._lastPopMilestone = 0;
     this._godKilledAll = false;
     this._dynamicPopMax = null;
+    this.citizenAIEnabled = false;
     // Load any custom cells from previous sessions
     loadCustomCells();
   }
+
+  setCitizenAIGlobal(enabled) { this.citizenAIEnabled = !!enabled; }
 
   init(apiKey, model, seed) {
     this.stop();
@@ -284,6 +287,7 @@ export class SimulationEngine {
   }
 
   async _processCitizenAICalls() {
+    if (!this.citizenAIEnabled) return;
     if (!this.citizens || this.citizens.length === 0) return;
     let calls = 0;
     for (const c of this.citizens) {

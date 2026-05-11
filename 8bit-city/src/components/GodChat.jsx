@@ -75,6 +75,7 @@ export default function GodChat({ simState, onSendOrder, disabled, selectedIds =
           .filter(Boolean);
 
         const isNewFeature = result._isNewFeature;
+        const usedFallback = !!(result._usedFallback || result._isLocal);
         setMessages(prev => [...prev, {
           type: 'response',
           text: `✦ ${result.mensaje_confirmacion}`,
@@ -82,6 +83,7 @@ export default function GodChat({ simState, onSendOrder, disabled, selectedIds =
           affected: affectedNames,
           effect: result.tipo_de_efecto,
           isNewFeature,
+          usedFallback,
           featureLabel: result._featureLabel,
           featureCommitted: result._featureCommitted,
         }]);
@@ -158,6 +160,9 @@ export default function GodChat({ simState, onSendOrder, disabled, selectedIds =
                       ? ' — ✅ commiteado al repo'
                       : ' — código escrito y guardado'}
                   </div>
+                )}
+                {msg.usedFallback && (
+                  <div className="msg-fallback">⚠ Fallback aplicado — resultado local (IA no disponible)</div>
                 )}
                 {msg.detail && <div className="msg-detail">🎬 {msg.detail}</div>}
                 {msg.affected?.length > 0 && (

@@ -315,6 +315,30 @@ export function tryLocalOrder(order, allCitizens) {
       confirmacion: '✦ La ciudad ha sido restaurada', visual: 'Nuevos edificios reemplazan las ruinas', reaccion: 'celebracion' });
   }
 
+  // ── Crisis existencial (targeted) ───────────────────────────────────────
+  if (/(?:crisis\s+existencial|crisis\s+existencia|crisis\s+existencialmente)/.test(oClean)) {
+    // targets via bracket names if present
+    const targets = bracketNames.length > 0 ? bracketNames : [];
+    if (targets.length > 0) {
+      // map names to IDs will be resolved by simulation (interpretation expects cambios_atributos by ID),
+      // here we provide a symbolic signal; the interpreter will map names when applying god order.
+      return _localResult({ tipo_de_efecto: 'fuego', efecto: 'fuego', cambios_atributos: {},
+        confirmacion: `✦ La crisis existencial ha llegado a ${targets.join(', ')}`, visual: 'El apocalipsis se acerca', reaccion: 'panico' });
+    }
+    return _localResult({ tipo_de_efecto: 'fuego', efecto: 'fuego', cambios_atributos: {},
+      confirmacion: '✦ La crisis existencial ha llegado, el mundo se acaba', visual: 'El apocalipsis se acerca', reaccion: 'panico' });
+  }
+
+  // ── Make someone president and have everyone praise them
+  const presMatch = oClean.match(/(?:vuelv[ea]\s+a\s+([\wáéíóúñ]+)\s+presidente|volve\s+a\s+([\wáéíóúñ]+)\s+presidente|vuelve\s+a\s+([\wáéíóúñ]+)\s+presidente)/);
+  if (presMatch || /presidente/.test(oClean) && bracketNames.length>0) {
+    const name = (presMatch && (presMatch[1]||presMatch[2]||presMatch[3])) || bracketNames[0];
+    if (name) {
+      return _localResult({ boost_todos: { f: 50 }, efecto: 'generico',
+        confirmacion: `✦ Orden ejecutada. ${name} es ahora presidente y todos lo alaban.`, visual: 'Algo misterioso ocurre', reaccion: 'celebracion' });
+    }
+  }
+
   return null; // Let Groq or feature generator handle it
 }
 
