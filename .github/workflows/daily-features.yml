@@ -1,0 +1,51 @@
+name: 🏙 Daily City Features
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+
+  workflow_dispatch:
+    inputs:
+      count:
+        description: 'Number of features to generate'
+        required: false
+        default: '10'
+
+jobs:
+  generate-features:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        working-directory: 8bit-city
+        run: npm install
+
+      - name: Generate AI features
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          FEATURE_COUNT: ${{ github.event.inputs.count || '' }}
+        run: node .github/scripts/generate-daily-features.mjs
+
+      - name: Configure Git
+        run: |
+          git config user.name "theotrosman"
+          git config user.email "theotrosman@gmail.com"
+
+      - name: Push commits
+        run: |
+          git push origin HEAD:master

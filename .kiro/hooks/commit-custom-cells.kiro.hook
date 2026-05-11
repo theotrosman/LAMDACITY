@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Auto-commit Custom Cells",
+  "description": "When a new custom cell is generated via god mode and written to customCells.js, automatically stage and commit it to git with the 8bit prefix convention",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "8bit-city/src/engine/customCells.js"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "git add 8bit-city/src/engine/customCells.js && git diff --cached --quiet || git commit -m \"feat(8bit): update custom cells registry\""
+  }
+}
