@@ -29,7 +29,9 @@ export default function App() {
 
   useEffect(() => {
     engineRef.current = new SimulationEngine(handleStateUpdate, handleGodResponse);
-    return () => engineRef.current?.stop();
+    // Expose for debugging / scripted orders in dev
+    try { window.simEngine = engineRef.current; } catch {}
+    return () => { try { window.simEngine = undefined; } catch {} ; engineRef.current?.stop(); };
   }, [handleStateUpdate, handleGodResponse]);
 
   const handleStart   = useCallback((k, m, s) => engineRef.current?.init(k, m, s), []);
