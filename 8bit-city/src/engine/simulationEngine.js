@@ -6,6 +6,7 @@ import { NewsSystem } from './newsSystem.js';
 import { createRNG, randomInt, randomChoice } from '../utils/rng.js';
 import { loadCustomCells, getAllCustomCells, hasCustomCell, getCustomCellEventTriggers } from './customCellRegistry.js';
 import { detectNewFeature, generateFeature } from './featureGenerator.js';
+import { askCitizenQuestion } from './groqClient.js';
 
 const { CELL, STAGE } = CONFIG;
 
@@ -275,9 +276,62 @@ export class SimulationEngine {
     // Cap effects to prevent lag from accumulation
     if (this.effects.length > 20) this.effects = this.effects.slice(-20);
     this.floatingTexts = this.floatingTexts.map(t => ({ ...t, life: t.life - 1, y: t.y - 0.7 })).filter(t => t.life > 0);
+    // Process any scheduled citizen AI calls (locura / introspection)
+    try { await this._processCitizenAICalls(); } catch (e) { console.warn('[AI] citizen calls error', e.message); }
 
     this._emitState();
     this._scheduleNextTick();
+  }
+
+  async _processCitizenAICalls() {
+    if (!this.citizens || this.citizens.length === 0) return;
+    let calls = 0;
+    for (const c of this.citizens) {
+      if (!c.alive) continue;
+      if (!c.insane && !c._questioning) continue;
+      if (!c.nextAiCallTick) c.nextAiCallTick = this.tick + CONFIG.AI_CALL_INTERVAL_TICKS;
+      if (this.tick < c.nextAiCallTick) continue;
+      if (calls >= CONFIG.AI_MAX_CALLS_PER_TICK) break;
+      c.nextAiCallTick = this.tick + CONFIG.AI_CALL_INTERVAL_TICKS;
+      calls++;
+
+      // Attempt external AI call if apiKey present, else fallback local
+      let response = null;
+      if (this.apiKey) {
+        try {
+          response = await askCitizenQuestion(this.apiKey, this.model, c);
+        } catch (e) {
+          response = null;
+        }
+      }
+
+      if (!response) {
+        // Local simulated reaction
+        const emotions = ['miedo','tristeza','ira','alegria','confusion','asombro'];
+        const moves = ['quieto','caminar','correr','huir','deambular'];
+        const emo = emotions[Math.floor(this.rng()*emotions.length)];
+        const mov = moves[Math.floor(this.rng()*moves.length)];
+        response = { text: `Se pregunta por su existencia y siente ${emo}`, emotion: emo, movement: mov, deltas: { e: -5, f: -6 } };
+      }
+
+      // Apply response: adjust attributes and behavior
+      try {
+        if (response.deltas) {
+          if (response.deltas.e != null) c.energy = Math.max(0, Math.min(100, c.energy + response.deltas.e));
+          if (response.deltas.f != null) c.happiness = Math.max(0, Math.min(100, c.happiness + response.deltas.f));
+          if (response.deltas.h != null) c.hunger = Math.max(0, Math.min(100, c.hunger + response.deltas.h));
+        }
+        // Map emotion to emoji
+        const emoMap = { miedo: '😨', tristeza: '😢', ira: '😡', alegria: '😃', confusion: '😵', asombro: '🤯' };
+        const emoj = emoMap[response.emotion] || '😶';
+        this._addFloat(c.pixelX, c.pixelY - 10, emoj, '#f5c842', 40);
+        // Movement override for short time
+        const moveMap = { quieto: 'dormir', caminar: 'caminar', correr: 'caminar', huir: 'caminar', deambular: 'explorar' };
+        const act = moveMap[response.movement] || 'caminar';
+        c.behavior = { action: act, duration: Math.max(8, Math.floor(Math.abs((response.deltas?.e||0))/1)+12), description: response.text };
+        c.behaviorTicksLeft = c.behavior.duration;
+      } catch (e) { /* ignore */ }
+    }
   }
 
   // ── Autonomous city evolution — no API ────────────────────────────────────
@@ -1007,6 +1061,17 @@ export class SimulationEngine {
       totalTicks: interp.duracion_en_ticks * 2,
       description: interp.descripcion_visual,
     });
+    // If the effect is 'locura' or reaction indicates locura, mark citizens to start AI calls
+    if (interp.tipo_de_efecto === 'locura' || interp.reaccion_ciudadanos === 'locura') {
+      const targets = interp.ciudadanos_afectados.length > 0
+        ? this.citizens.filter(c => c.alive && interp.ciudadanos_afectados.includes(c.id))
+        : this.citizens.filter(c => c.alive);
+      for (const c of targets) {
+        c.insane = true;
+        c.nextAiCallTick = this.tick + CONFIG.AI_CALL_INTERVAL_TICKS;
+      }
+      this.news.addCustom('✦ La población ha caído en la locura', 'crisis');
+    }
     // Floating text on each affected citizen (no extra effects to avoid lag)
     const affected = interp.ciudadanos_afectados.map(id => this.citizens.find(c => c.id === id)).filter(Boolean);
     for (const c of affected) {

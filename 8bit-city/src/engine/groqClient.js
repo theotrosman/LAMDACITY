@@ -434,3 +434,21 @@ NO uses placeholders. Escribe texto real y dramático.`;
     tipo: p.tipo || 'evento',
   };
 }
+
+// ── Ask AI about a citizen's thoughts / reaction (optional, queued) ───────
+export async function askCitizenQuestion(apiKey, model, citizen) {
+  if (!apiKey) throw new Error('No API key');
+  const sys = `Eres un analista corto y directo. Recibe datos de un ciudadano y responde SOLO JSON válido:
+{"text":"respuesta corta","emotion":"miedo|tristeza|ira|alegria|confusion|asombro","movement":"quieto|caminar|correr|huir|deambular","deltas":{"e":-5,"f":-10}}
+Explica en 1-3 frases cómo reaccionaría el ciudadano.`;
+  const pop = `${citizen.id}:${citizen.name} stage:${citizen.stage} energy:${Math.round(citizen.energy)} hunger:${Math.round(citizen.hunger)} happiness:${Math.round(citizen.happiness)}`;
+  try {
+    const raw = await enqueue(() => callGroq(apiKey, model, [
+      { role: 'system', content: sys },
+      { role: 'user', content: `CITIZEN:${pop} DESCRIBE: ¿Por qué existo?` },
+    ], CONFIG.GROQ_TIMEOUT_EVENT, CONFIG.GROQ_MAX_TOKENS_EVENT));
+    try { return JSON.parse(raw); } catch { return { text: raw.slice(0,140), emotion: 'confusion', movement: 'deambular', deltas: {} }; }
+  } catch (e) {
+    throw e;
+  }
+}
